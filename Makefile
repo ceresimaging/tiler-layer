@@ -38,15 +38,15 @@ LOCALES =
 # translation
 SOURCES = \
 	__init__.py \
-	tiler-layer.py tiler-layer_dockwidget.py
+	tiler_layer.py tiler_layer_dockwidget.py
 
-PLUGINNAME = tiler-layer
+PLUGINNAME = tiler_layer
 
 PY_FILES = \
 	__init__.py \
-	tiler-layer.py tiler-layer_dockwidget.py
+	tiler_layer.py tiler_layer_dockwidget.py
 
-UI_FILES = tiler-layer_dockwidget_base.ui
+UI_FILES = tiler_layer_dockwidget_base.ui
 
 EXTRAS = metadata.txt icon.png
 

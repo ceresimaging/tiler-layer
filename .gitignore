@@ -1,3 +1,4 @@
 .vscode
 zip_build
 help/build
+.DS_Store

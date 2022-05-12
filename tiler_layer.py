@@ -24,11 +24,13 @@
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
+from qgis.core import Qgis, QgsRasterLayer, QgsVectorTileLayer, QgsProject
+
 # Initialize Qt resources from file resources.py
 from .resources import *
 
 # Import the code for the DockWidget
-from .tiler-layer_dockwidget import TilerLayerDockWidget
+from .tiler_layer_dockwidget import TilerLayerDockWidget
 import os.path
 
 
@@ -50,11 +52,10 @@ class TilerLayer:
         self.plugin_dir = os.path.dirname(__file__)
 
         # initialize locale
-        locale = QSettings().value('locale/userLocale')[0:2]
+        locale = QSettings().value("locale/userLocale")[0:2]
         locale_path = os.path.join(
-            self.plugin_dir,
-            'i18n',
-            'TilerLayer_{}.qm'.format(locale))
+            self.plugin_dir, "i18n", "TilerLayer_{}.qm".format(locale)
+        )
 
         if os.path.exists(locale_path):
             self.translator = QTranslator()
@@ -63,16 +64,15 @@ class TilerLayer:
 
         # Declare instance attributes
         self.actions = []
-        self.menu = self.tr(u'&Tiler Layer')
+        self.menu = self.tr("&Tiler Layer")
         # TODO: We are going to let the user set this up in a future iteration
-        self.toolbar = self.iface.addToolBar(u'TilerLayer')
-        self.toolbar.setObjectName(u'TilerLayer')
+        self.toolbar = self.iface.addToolBar("TilerLayer")
+        self.toolbar.setObjectName("TilerLayer")
 
-        #print "** INITIALIZING TilerLayer"
+        # print "** INITIALIZING TilerLayer"
 
         self.pluginIsActive = False
         self.dockwidget = None
-
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -87,8 +87,7 @@ class TilerLayer:
         :rtype: QString
         """
         # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
-        return QCoreApplication.translate('TilerLayer', message)
-
+        return QCoreApplication.translate("TilerLayer", message)
 
     def add_action(
         self,
@@ -100,7 +99,8 @@ class TilerLayer:
         add_to_toolbar=True,
         status_tip=None,
         whats_this=None,
-        parent=None):
+        parent=None,
+    ):
         """Add a toolbar icon to the toolbar.
 
         :param icon_path: Path to the icon for this action. Can be a resource
@@ -155,31 +155,29 @@ class TilerLayer:
             self.toolbar.addAction(action)
 
         if add_to_menu:
-            self.iface.addPluginToMenu(
-                self.menu,
-                action)
+            self.iface.addPluginToMenu(self.menu, action)
 
         self.actions.append(action)
 
         return action
 
-
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
-        icon_path = ':/plugins/tiler-layer/icon.png'
+        icon_path = ":/plugins/tiler_layer/icon.png"
         self.add_action(
             icon_path,
-            text=self.tr(u''),
+            text=self.tr(""),
             callback=self.run,
-            parent=self.iface.mainWindow())
+            parent=self.iface.mainWindow(),
+        )
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
 
     def onClosePlugin(self):
         """Cleanup necessary items here when plugin dockwidget is closed"""
 
-        #print "** CLOSING TilerLayer"
+        # print "** CLOSING TilerLayer"
 
         # disconnects
         self.dockwidget.closingPlugin.disconnect(self.onClosePlugin)
@@ -192,21 +190,18 @@ class TilerLayer:
 
         self.pluginIsActive = False
 
-
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
 
-        #print "** UNLOAD TilerLayer"
+        # print "** UNLOAD TilerLayer"
 
         for action in self.actions:
-            self.iface.removePluginMenu(
-                self.tr(u'&Tiler Layer'),
-                action)
+            self.iface.removePluginMenu(self.tr("&Tiler Layer"), action)
             self.iface.removeToolBarIcon(action)
         # remove the toolbar
         del self.toolbar
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
 
     def run(self):
         """Run method that loads and starts the plugin"""
@@ -214,19 +209,84 @@ class TilerLayer:
         if not self.pluginIsActive:
             self.pluginIsActive = True
 
-            #print "** STARTING TilerLayer"
+            # print "** STARTING TilerLayer"
 
             # dockwidget may not exist if:
             #    first run of plugin
             #    removed on close (see self.onClosePlugin method)
-            if self.dockwidget == None:
+            if self.dockwidget is None:
                 # Create the dockwidget (after translation) and keep reference
                 self.dockwidget = TilerLayerDockWidget()
 
             # connect to provide cleanup on closing of dockwidget
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
 
+            self.dockwidget.load.clicked.connect(self.loadLayer)
+
             # show the dockwidget
             # TODO: fix to allow choice of dock location
             self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dockwidget)
             self.dockwidget.show()
+
+    # --------------------------------------------------------------------------
+
+    def loadLayer(self):
+        layer = self.dockwidget.layer.currentText()
+        if layer == "mosaic":
+            self.loadMosaic()
+        elif layer == "fieldgeo":
+            self.loadFieldGeo()
+
+    def loadRaster(self, url, title):
+        baseUrl = self.dockwidget.env.currentData()
+        xyz = "%7Bz%7D/%7Bx%7D/%7By%7D"
+        format = "png"
+        maxZoom = 18
+        minZoom = 0
+        crs = "EPSG3857"
+
+        url = f"type=xyz&url={baseUrl}/{url}/{xyz}.{format}&zmax={maxZoom}&zmin={minZoom}&crs={crs}"
+
+        layer = QgsRasterLayer(url, title, "wms")
+
+        if layer.isValid():
+            QgsProject.instance().addMapLayer(layer)
+        else:
+            self.iface.messageBar().pushMessage(
+                "Error", f"Invalid Raster Layer: {url}", level=Qgis.Critical
+            )
+
+    def loadVector(self, url, title):
+        baseUrl = self.dockwidget.env.currentData()
+        xyz = "%7Bz%7D/%7Bx%7D/%7By%7D"
+        format = "mvt"
+        maxZoom = 18
+        minZoom = 0
+        crs = "EPSG3857"
+
+        url = f"type=xyz&url={baseUrl}/{url}/{xyz}.{format}&zmax={maxZoom}&zmin={minZoom}&crs={crs}"
+
+        layer = QgsVectorTileLayer(url, title)
+
+        if layer.isValid():
+            QgsProject.instance().addMapLayer(layer)
+        else:
+            self.iface.messageBar().pushMessage(
+                "Error", f"Invalid Vector Layer: {url}", level=Qgis.Critical
+            )
+
+    def loadMosaic(self):
+        flight = self.dockwidget.flight.text()
+        field = self.dockwidget.field.text()
+        type = self.dockwidget.type.currentText()
+
+        url = f"mosaic/{flight}/{field}/{type}"
+        title = f"Mosaic - {flight} - {field} - {type}"
+
+        self.loadRaster(url, title)
+
+    def loadFieldGeo(self):
+        url = f"fieldgeo"
+        title = f"FieldGeo"
+
+        self.loadVector(url, title)

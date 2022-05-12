@@ -32,5 +32,6 @@ def classFactory(iface):  # pylint: disable=invalid-name
     :type iface: QgsInterface
     """
     #
-    from .tiler-layer import TilerLayer
+    from .tiler_layer import TilerLayer
+
     return TilerLayer(iface)

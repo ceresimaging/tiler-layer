@@ -8,15 +8,15 @@
 
 """
 
-__author__ = 'mmiranda@ceresimaging.net'
-__date__ = '2022-05-12'
-__copyright__ = 'Copyright 2022, Ceres Imaging'
+__author__ = "mmiranda@ceresimaging.net"
+__date__ = "2022-05-12"
+__copyright__ = "Copyright 2022, Ceres Imaging"
 
 import unittest
 
 from qgis.PyQt.QtGui import QDockWidget
 
-from tiler-layer_dockwidget import TilerLayerDockWidget
+from tiler_layer_dockwidget import TilerLayerDockWidget
 
 from utilities import get_qgis_app
 
@@ -38,8 +38,8 @@ class TilerLayerDockWidgetTest(unittest.TestCase):
         """Test we can click OK."""
         pass
 
+
 if __name__ == "__main__":
     suite = unittest.makeSuite(TilerLayerDialogTest)
     runner = unittest.TextTestRunner(verbosity=2)
     runner.run(suite)
-

@@ -1,5 +1,5 @@
 <RCC>
-    <qresource prefix="/plugins/tiler-layer" >
+    <qresource prefix="/plugins/tiler_layer" >
         <file>icon.png</file>
     </qresource>
 </RCC>

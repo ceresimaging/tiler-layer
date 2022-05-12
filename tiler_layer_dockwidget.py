@@ -24,11 +24,12 @@
 
 import os
 
-from qgis.PyQt import QtGui, QtWidgets, uic
+from qgis.PyQt import QtWidgets, uic
 from qgis.PyQt.QtCore import pyqtSignal
 
-FORM_CLASS, _ = uic.loadUiType(os.path.join(
-    os.path.dirname(__file__), 'tiler-layer_dockwidget_base.ui'))
+FORM_CLASS, _ = uic.loadUiType(
+    os.path.join(os.path.dirname(__file__), "tiler_layer_dockwidget_base.ui")
+)
 
 
 class TilerLayerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
@@ -44,6 +45,29 @@ class TilerLayerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         # http://doc.qt.io/qt-5/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
+
+        self.env.addItem("Production", "https://tiles.ceresimaging.net")
+        self.env.addItem("Testing", "https://tiles-testing.ceresimaging.net")
+        self.env.addItem("Development", "http://localhost:8888")
+
+        self.layer.activated.connect(self.layerChanged)
+
+    def layerChanged(self, index):
+        layer = self.layer.currentText()
+        if layer == "mosaic":
+            self.flight.show()
+            self.flightLabel.show()
+            self.field.show()
+            self.fieldLabel.show()
+            self.type.show()
+            self.typeLabel.show()
+        elif layer == "fieldgeo":
+            self.flight.hide()
+            self.flightLabel.hide()
+            self.field.hide()
+            self.fieldLabel.hide()
+            self.type.hide()
+            self.typeLabel.hide()
 
     def closeEvent(self, event):
         self.closingPlugin.emit()
