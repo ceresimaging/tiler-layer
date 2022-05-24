@@ -21,17 +21,32 @@
  *                                                                         *
  ***************************************************************************/
 """
+from cmath import log
+from os import path, getenv
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
-from qgis.core import Qgis, QgsRasterLayer, QgsVectorTileLayer, QgsProject
+from qgis.core import (
+    Qgis,
+    QgsSettings,
+    QgsRasterLayer,
+    QgsVectorTileLayer,
+    QgsProject,
+    QgsMessageLog,
+    QgsRectangle,
+    QgsCoordinateReferenceSystem,
+    QgsCoordinateTransform,
+)
 
 # Initialize Qt resources from file resources.py
 from .resources import *
 
 # Import the code for the DockWidget
 from .tiler_layer_dockwidget import TilerLayerDockWidget
-import os.path
+
+from .tiler_layer_options import TilerLayerOptionsFactory
+
+import worksclient as wc
 
 
 class TilerLayer:
@@ -49,15 +64,15 @@ class TilerLayer:
         self.iface = iface
 
         # initialize plugin directory
-        self.plugin_dir = os.path.dirname(__file__)
+        self.plugin_dir = path.dirname(__file__)
 
         # initialize locale
         locale = QSettings().value("locale/userLocale")[0:2]
-        locale_path = os.path.join(
+        locale_path = path.join(
             self.plugin_dir, "i18n", "TilerLayer_{}.qm".format(locale)
         )
 
-        if os.path.exists(locale_path):
+        if path.exists(locale_path):
             self.translator = QTranslator()
             self.translator.load(locale_path)
             QCoreApplication.installTranslator(self.translator)
@@ -73,6 +88,7 @@ class TilerLayer:
 
         self.pluginIsActive = False
         self.dockwidget = None
+        self.settings = QgsSettings()
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -164,13 +180,17 @@ class TilerLayer:
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
-        icon_path = ":/plugins/tiler_layer/icon.png"
+        icon_path = path.join(self.plugin_dir, "icon.png")
         self.add_action(
             icon_path,
             text=self.tr(""),
             callback=self.run,
             parent=self.iface.mainWindow(),
         )
+
+        self.options_factory = TilerLayerOptionsFactory(self.plugin_dir)
+        self.options_factory.setTitle(self.tr("Tiler Layer"))
+        self.iface.registerOptionsWidgetFactory(self.options_factory)
 
     # --------------------------------------------------------------------------
 
@@ -201,12 +221,28 @@ class TilerLayer:
         # remove the toolbar
         del self.toolbar
 
+        self.iface.unregisterOptionsWidgetFactory(self.options_factory)
+
     # --------------------------------------------------------------------------
 
     def run(self):
         """Run method that loads and starts the plugin"""
 
         if not self.pluginIsActive:
+            if (
+                self.settings.value("tiler_layer/token")
+                and self.settings.value("tiler_layer/api")
+                and self.settings.value("tiler_layer/tiler")
+            ):
+                wc.auth_token = self.settings.value("tiler_layer/token")
+                wc.api_base = self.settings.value("tiler_layer/api")
+                self.baseUrl = self.settings.value("tiler_layer/tiler")
+            else:
+                self.iface.messageBar().pushMessage(
+                    "Error", f"Some settings are missing", level=Qgis.Critical
+                )
+                return
+
             self.pluginIsActive = True
 
             # print "** STARTING TilerLayer"
@@ -230,63 +266,132 @@ class TilerLayer:
 
     # --------------------------------------------------------------------------
 
+    def log(self, message):
+        QgsMessageLog.logMessage(f"{message}")
+
     def loadLayer(self):
-        layer = self.dockwidget.layer.currentText()
+        layer = self.dockwidget.layer.currentData()
         if layer == "mosaic":
             self.loadMosaic()
         elif layer == "fieldgeo":
             self.loadFieldGeo()
+        elif layer == "imagery":
+            self.loadImagery()
+        elif layer == "pli":
+            self.loadPLI()
 
-    def loadRaster(self, url, title):
-        baseUrl = self.dockwidget.env.currentData()
+    def loadRaster(self, url, title, field=None):
         xyz = "%7Bz%7D/%7Bx%7D/%7By%7D"
         format = "png"
         maxZoom = 18
         minZoom = 0
         crs = "EPSG3857"
 
-        url = f"type=xyz&url={baseUrl}/{url}/{xyz}.{format}&zmax={maxZoom}&zmin={minZoom}&crs={crs}"
+        url = f"type=xyz&url={self.baseUrl}/{url}/{xyz}.{format}&zmax={maxZoom}&zmin={minZoom}&crs={crs}"
 
         layer = QgsRasterLayer(url, title, "wms")
 
         if layer.isValid():
             QgsProject.instance().addMapLayer(layer)
+            if field and self.dockwidget.extent.isChecked():
+                self.zoomToField(field)
         else:
             self.iface.messageBar().pushMessage(
                 "Error", f"Invalid Raster Layer: {url}", level=Qgis.Critical
             )
 
-    def loadVector(self, url, title):
-        baseUrl = self.dockwidget.env.currentData()
+        return layer
+
+    def loadVector(self, url, title, field=None):
         xyz = "%7Bz%7D/%7Bx%7D/%7By%7D"
         format = "mvt"
         maxZoom = 18
         minZoom = 0
         crs = "EPSG3857"
 
-        url = f"type=xyz&url={baseUrl}/{url}/{xyz}.{format}&zmax={maxZoom}&zmin={minZoom}&crs={crs}"
+        url = f"type=xyz&url={self.baseUrl}/{url}/{xyz}.{format}&zmax={maxZoom}&zmin={minZoom}&crs={crs}"
 
         layer = QgsVectorTileLayer(url, title)
 
         if layer.isValid():
             QgsProject.instance().addMapLayer(layer)
+            if field and self.dockwidget.extent.isChecked():
+                self.zoomToField(field)
         else:
             self.iface.messageBar().pushMessage(
                 "Error", f"Invalid Vector Layer: {url}", level=Qgis.Critical
             )
 
+        return layer
+
+    def zoomToField(self, field):
+        self.canvas = self.iface.mapCanvas()
+        coords = field["boundary"]
+        zoomRectangle = QgsRectangle(coords[0], coords[1], coords[2], coords[3])
+        transform = QgsCoordinateTransform(
+            QgsCoordinateReferenceSystem("EPSG:4326"),
+            QgsCoordinateReferenceSystem(
+                self.iface.mapCanvas().mapSettings().destinationCrs().authid()
+            ),
+            QgsProject.instance(),
+        )
+        extent = transform.transformBoundingBox(zoomRectangle)
+        self.canvas.setExtent(extent.buffered(100))
+        self.canvas.refresh()
+
     def loadMosaic(self):
         flight = self.dockwidget.flight.text()
         field = self.dockwidget.field.text()
-        type = self.dockwidget.type.currentText()
+        type = self.dockwidget.mosaicType.currentText()
 
         url = f"mosaic/{flight}/{field}/{type}"
-        title = f"Mosaic - {flight} - {field} - {type}"
 
-        self.loadRaster(url, title)
+        field = wc.Field.retrieve(field)
+
+        title = f"Mosaic - {flight} - {field['name']} - {type}"
+
+        self.loadRaster(url, title, field)
+
+    def loadImagery(self):
+        overlay = self.dockwidget.overlay.text()
+
+        url = f"imagery/{overlay}"
+
+        overlay = wc.Overlay.retrieve(overlay)
+        field = wc.Field.retrieve(overlay["field_id"])
+
+        title = f"Imagery - {field['name']} - {overlay['overlay_type']}"
+
+        self.loadRaster(url, title, field)
 
     def loadFieldGeo(self):
+        field = self.dockwidget.field.text()
+
         url = f"fieldgeo"
         title = f"FieldGeo"
 
-        self.loadVector(url, title)
+        if field != "":
+            url = f"{url}/field/{field}"
+            field = wc.Field.retrieve(field)
+            title = f"{title} - {field['name']}"
+
+        self.loadVector(url, title, field)
+
+    def loadPLI(self):
+        overlay = self.dockwidget.overlay.text()
+
+        url = f"tree/data/{overlay}"
+
+        overlay = wc.Overlay.retrieve(overlay)
+        field = wc.Field.retrieve(overlay["field_id"])
+
+        title = f"PLI - {field['name']} - {overlay['overlay_type']}"
+
+        layer = self.loadVector(url, title, field)
+
+        self.loadStyle(layer, "pli")
+
+        layer.triggerRepaint()
+
+    def loadStyle(self, layer, style):
+        layer.loadNamedStyle(path.join(self.plugin_dir, "styles", f"{style}.qml"))

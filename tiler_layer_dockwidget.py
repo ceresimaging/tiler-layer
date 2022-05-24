@@ -46,28 +46,56 @@ class TilerLayerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
 
-        self.env.addItem("Production", "https://tiles.ceresimaging.net")
-        self.env.addItem("Testing", "https://tiles-testing.ceresimaging.net")
-        self.env.addItem("Development", "http://localhost:8888")
+        self.hideAll()
+
+        self.layer.addItem("")
+        self.layer.addItem("Mosaic", "mosaic")
+        self.layer.addItem("FieldGeo", "fieldgeo")
+        self.layer.addItem("Imagery", "imagery")
+        self.layer.addItem("PLI", "pli")
+
+        self.mosaicType.addItem("Jenoptik", "Jenoptik")
+        self.mosaicType.addItem("VNIR", "VNIR")
 
         self.layer.activated.connect(self.layerChanged)
 
+        # only for testing
+        # self.flight.setText("16073")
+        # self.field.setText("76846")
+        # self.overlay.setText("700eeb72-21dc-4834-9be7-22ac173387c0")
+        # self.layer.setCurrentIndex(1)
+        # self.overlay.show()
+        # self.overlayLabel.show()
+
+    def hideAll(self):
+        self.flight.hide()
+        self.flightLabel.hide()
+        self.field.hide()
+        self.fieldLabel.hide()
+        self.mosaicType.hide()
+        self.mosaicTypeLabel.hide()
+        self.overlay.hide()
+        self.overlayLabel.hide()
+
     def layerChanged(self, index):
-        layer = self.layer.currentText()
+        self.hideAll()
+        layer = self.layer.currentData()
         if layer == "mosaic":
             self.flight.show()
             self.flightLabel.show()
             self.field.show()
             self.fieldLabel.show()
-            self.type.show()
-            self.typeLabel.show()
+            self.mosaicType.show()
+            self.mosaicTypeLabel.show()
         elif layer == "fieldgeo":
-            self.flight.hide()
-            self.flightLabel.hide()
-            self.field.hide()
-            self.fieldLabel.hide()
-            self.type.hide()
-            self.typeLabel.hide()
+            self.field.show()
+            self.fieldLabel.show()
+        elif layer == "imagery":
+            self.overlay.show()
+            self.overlayLabel.show()
+        elif layer == "pli":
+            self.overlay.show()
+            self.overlayLabel.show()
 
     def closeEvent(self, event):
         self.closingPlugin.emit()
