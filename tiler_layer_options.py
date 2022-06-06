@@ -1,4 +1,4 @@
-from qgis.PyQt.QtWidgets import QFormLayout, QLineEdit, QLabel
+from qgis.PyQt.QtWidgets import QFormLayout, QLineEdit, QLabel, QComboBox
 from qgis.gui import QgsOptionsWidgetFactory, QgsOptionsPageWidget
 from qgis.PyQt.QtGui import QIcon
 from qgis.core import QgsSettings
@@ -23,14 +23,24 @@ class ConfigOptionsPage(QgsOptionsPageWidget):
 
         self.settings = QgsSettings()
 
-        tilerLabel = QLabel("Tiler Base URL")
-        self.tiler = QLineEdit(
-            self.settings.value("tiler_layer/tiler", "https://tile.ceresimaging.net")
+        tilerLabel = QLabel("Tiler Environment")
+        self.tiler = QComboBox()
+        self.tiler.addItem("Development", "http://localhost:8888")
+        self.tiler.addItem("Testing", "https://tiles-testing.ceresimaging.net")
+        self.tiler.addItem("Production", "https://tiles.ceresimaging.net")
+        self.tiler.setCurrentIndex(
+            self.tiler.findData(self.settings.value("tiler_layer/tiler"))
         )
-        apiLabel = QLabel("API Base URL")
-        self.api = QLineEdit(
-            self.settings.value("tiler_layer/api", "https://works.ceresimaging.net")
+
+        apiLabel = QLabel("API Environment")
+        self.api = QComboBox()
+        self.api.addItem("Development", "http://localhost:8000")
+        self.api.addItem("Staging", "https://works-staging.ceresimaging.net")
+        self.api.addItem("Production", "https://works.ceresimaging.net")
+        self.api.setCurrentIndex(
+            self.api.findData(self.settings.value("tiler_layer/api"))
         )
+
         tokenLabel = QLabel("API Token")
         self.token = QLineEdit(self.settings.value("tiler_layer/token"))
 
@@ -43,6 +53,6 @@ class ConfigOptionsPage(QgsOptionsPageWidget):
         self.setLayout(layout)
 
     def apply(self):
-        self.settings.setValue("tiler_layer/tiler", self.tiler.text())
-        self.settings.setValue("tiler_layer/api", self.api.text())
+        self.settings.setValue("tiler_layer/tiler", self.tiler.currentData())
+        self.settings.setValue("tiler_layer/api", self.api.currentData())
         self.settings.setValue("tiler_layer/token", self.token.text())

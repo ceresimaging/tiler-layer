@@ -21,8 +21,8 @@
  *                                                                         *
  ***************************************************************************/
 """
+import sys, os
 from cmath import log
-from os import path, getenv
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
@@ -46,7 +46,13 @@ from .tiler_layer_dockwidget import TilerLayerDockWidget
 
 from .tiler_layer_options import TilerLayerOptionsFactory
 
-import worksclient as wc
+try:
+    import worksclient as wc
+except ImportError:
+    this_dir = os.path.dirname(os.path.realpath(__file__))
+    path = os.path.join(this_dir, "worksclient-0.0.8-py3-none-any.whl")
+    sys.path.append(path)
+    import worksclient as wc
 
 
 class TilerLayer:
@@ -64,15 +70,15 @@ class TilerLayer:
         self.iface = iface
 
         # initialize plugin directory
-        self.plugin_dir = path.dirname(__file__)
+        self.plugin_dir = os.path.dirname(__file__)
 
         # initialize locale
         locale = QSettings().value("locale/userLocale")[0:2]
-        locale_path = path.join(
+        locale_path = os.path.join(
             self.plugin_dir, "i18n", "TilerLayer_{}.qm".format(locale)
         )
 
-        if path.exists(locale_path):
+        if os.path.exists(locale_path):
             self.translator = QTranslator()
             self.translator.load(locale_path)
             QCoreApplication.installTranslator(self.translator)
@@ -180,7 +186,7 @@ class TilerLayer:
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
-        icon_path = path.join(self.plugin_dir, "icon.png")
+        icon_path = os.path.join(self.plugin_dir, "icon.png")
         self.add_action(
             icon_path,
             text=self.tr(""),
@@ -279,6 +285,10 @@ class TilerLayer:
             self.loadImagery()
         elif layer == "pli":
             self.loadPLI()
+        elif layer == "sensor":
+            self.loadSensor()
+        elif layer == "asset":
+            self.loadAsset()
 
     def loadRaster(self, url, title, field=None):
         xyz = "%7Bz%7D/%7Bx%7D/%7By%7D"
@@ -324,6 +334,9 @@ class TilerLayer:
 
         return layer
 
+    def loadStyle(self, layer, style):
+        layer.loadNamedStyle(os.path.join(self.plugin_dir, "styles", f"{style}.qml"))
+
     def zoomToField(self, field):
         self.canvas = self.iface.mapCanvas()
         coords = field["boundary"]
@@ -343,55 +356,50 @@ class TilerLayer:
         flight = self.dockwidget.flight.text()
         field = self.dockwidget.field.text()
         type = self.dockwidget.mosaicType.currentText()
-
         url = f"mosaic/{flight}/{field}/{type}"
-
         field = wc.Field.retrieve(field)
-
         title = f"Mosaic - {flight} - {field['name']} - {type}"
-
         self.loadRaster(url, title, field)
 
     def loadImagery(self):
         overlay = self.dockwidget.overlay.text()
-
         url = f"imagery/{overlay}"
-
         overlay = wc.Overlay.retrieve(overlay)
         field = wc.Field.retrieve(overlay["field_id"])
-
         title = f"Imagery - {field['name']} - {overlay['overlay_type']}"
-
         self.loadRaster(url, title, field)
 
     def loadFieldGeo(self):
         field = self.dockwidget.field.text()
-
         url = f"fieldgeo"
         title = f"FieldGeo"
-
         if field != "":
             url = f"{url}/field/{field}"
             field = wc.Field.retrieve(field)
             title = f"{title} - {field['name']}"
-
         self.loadVector(url, title, field)
 
     def loadPLI(self):
         overlay = self.dockwidget.overlay.text()
-
         url = f"tree/data/{overlay}"
-
         overlay = wc.Overlay.retrieve(overlay)
         field = wc.Field.retrieve(overlay["field_id"])
-
         title = f"PLI - {field['name']} - {overlay['overlay_type']}"
-
         layer = self.loadVector(url, title, field)
-
         self.loadStyle(layer, "pli")
-
         layer.triggerRepaint()
 
-    def loadStyle(self, layer, style):
-        layer.loadNamedStyle(path.join(self.plugin_dir, "styles", f"{style}.qml"))
+    def loadSensor(self):
+        customer = self.dockwidget.customer.text()
+        url = f"sensor/{customer}"
+        customer = wc.Customer.retrieve(customer)
+        title = f"Sensor {customer['name']}"
+        self.loadVector(url, title)
+
+    def loadAsset(self):
+        asset = self.dockwidget.asset.text()
+        url = f"asset/{asset}"
+        asset = wc.Satellite.get_asset(asset)
+        field = wc.Field.retrieve(asset["field"])
+        title = f"Asset - {asset['id']} - {asset['asset_type']}"
+        self.loadRaster(url, title, field)

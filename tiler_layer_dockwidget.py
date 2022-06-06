@@ -53,29 +53,14 @@ class TilerLayerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.layer.addItem("FieldGeo", "fieldgeo")
         self.layer.addItem("Imagery", "imagery")
         self.layer.addItem("PLI", "pli")
-
-        self.mosaicType.addItem("Jenoptik", "Jenoptik")
-        self.mosaicType.addItem("VNIR", "VNIR")
+        self.layer.addItem("Sensor", "sensor")
+        self.layer.addItem("Asset", "asset")
 
         self.layer.activated.connect(self.layerChanged)
 
-        # only for testing
-        # self.flight.setText("16073")
-        # self.field.setText("76846")
-        # self.overlay.setText("700eeb72-21dc-4834-9be7-22ac173387c0")
-        # self.layer.setCurrentIndex(1)
-        # self.overlay.show()
-        # self.overlayLabel.show()
-
     def hideAll(self):
-        self.flight.hide()
-        self.flightLabel.hide()
-        self.field.hide()
-        self.fieldLabel.hide()
-        self.mosaicType.hide()
-        self.mosaicTypeLabel.hide()
-        self.overlay.hide()
-        self.overlayLabel.hide()
+        for i in range(self.formLayout.count()):
+            self.formLayout.itemAt(i).widget().hide()
 
     def layerChanged(self, index):
         self.hideAll()
@@ -96,6 +81,12 @@ class TilerLayerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         elif layer == "pli":
             self.overlay.show()
             self.overlayLabel.show()
+        elif layer == "sensor":
+            self.customer.show()
+            self.customerLabel.show()
+        elif layer == "asset":
+            self.asset.show()
+            self.assetLabel.show()
 
     def closeEvent(self, event):
         self.closingPlugin.emit()
