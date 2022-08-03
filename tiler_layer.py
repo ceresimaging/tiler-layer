@@ -329,6 +329,7 @@ class TilerLayer:
             if field and self.dockwidget.extent.isChecked():
                 layer.setExtent(self.fieldExtent(field))
             QgsProject.instance().addMapLayer(layer)
+            self.iface.zoomToActiveLayer()
         else:
             self.iface.messageBar().pushMessage(
                 "Error", f"Invalid Vector Layer: {url}", level=Qgis.Critical
@@ -339,7 +340,7 @@ class TilerLayer:
     def loadStyle(self, layer, style):
         layer.loadNamedStyle(os.path.join(self.plugin_dir, "styles", f"{style}.qml"))
 
-    def fieldExtent(self, field, buffer=100):
+    def fieldExtent(self, field, buffer=10):
         coords = field["boundary"]
         zoomRectangle = QgsRectangle(coords[0], coords[1], coords[2], coords[3])
         transform = QgsCoordinateTransform(

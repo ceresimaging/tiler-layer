@@ -1,2 +1,0 @@
-#!/bin/bash
-PATH=$PATH:/usr/local/HomeBrew/bin pb_tool deploy -y
