@@ -53,6 +53,7 @@ class TilerLayerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.layer.addItem("FieldGeo", "fieldgeo")
         self.layer.addItem("Imagery", "imagery")
         self.layer.addItem("PLI", "pli")
+        self.layer.addItem("Grid", "grid")
         self.layer.addItem("Sensor", "sensor")
         self.layer.addItem("Asset", "asset")
 
@@ -81,6 +82,11 @@ class TilerLayerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         elif layer == "pli":
             self.overlay.show()
             self.overlayLabel.show()
+        elif layer == "grid":
+            self.overlay.show()
+            self.overlayLabel.show()
+            self.grid.show()
+            self.gridLabel.show()
         elif layer == "sensor":
             self.customer.show()
             self.customerLabel.show()

@@ -273,7 +273,7 @@ class TilerLayer:
     # --------------------------------------------------------------------------
 
     def log(self, message):
-        QgsMessageLog.logMessage(f"{message}")
+        self.iface.messageBar().pushMessage("Info", f"{message}", level=Qgis.Info)
 
     def loadLayer(self):
         layer = self.dockwidget.layer.currentData()
@@ -285,6 +285,8 @@ class TilerLayer:
             self.loadImagery()
         elif layer == "pli":
             self.loadPLI()
+        elif layer == "grid":
+            self.loadGrid()
         elif layer == "sensor":
             self.loadSensor()
         elif layer == "asset":
@@ -304,7 +306,7 @@ class TilerLayer:
         if layer.isValid():
             QgsProject.instance().addMapLayer(layer)
             if field and self.dockwidget.extent.isChecked():
-                self.zoomToField(field)
+                layer.setExtent(self.fieldExtent(field, 100))
         else:
             self.iface.messageBar().pushMessage(
                 "Error", f"Invalid Raster Layer: {url}", level=Qgis.Critical
@@ -324,9 +326,9 @@ class TilerLayer:
         layer = QgsVectorTileLayer(url, title)
 
         if layer.isValid():
-            QgsProject.instance().addMapLayer(layer)
             if field and self.dockwidget.extent.isChecked():
-                self.zoomToField(field)
+                layer.setExtent(self.fieldExtent(field))
+            QgsProject.instance().addMapLayer(layer)
         else:
             self.iface.messageBar().pushMessage(
                 "Error", f"Invalid Vector Layer: {url}", level=Qgis.Critical
@@ -337,8 +339,7 @@ class TilerLayer:
     def loadStyle(self, layer, style):
         layer.loadNamedStyle(os.path.join(self.plugin_dir, "styles", f"{style}.qml"))
 
-    def zoomToField(self, field):
-        self.canvas = self.iface.mapCanvas()
+    def fieldExtent(self, field, buffer=100):
         coords = field["boundary"]
         zoomRectangle = QgsRectangle(coords[0], coords[1], coords[2], coords[3])
         transform = QgsCoordinateTransform(
@@ -348,9 +349,7 @@ class TilerLayer:
             ),
             QgsProject.instance(),
         )
-        extent = transform.transformBoundingBox(zoomRectangle)
-        self.canvas.setExtent(extent.buffered(100))
-        self.canvas.refresh()
+        return transform.transformBoundingBox(zoomRectangle).buffered(buffer)
 
     def loadMosaic(self):
         flight = self.dockwidget.flight.text()
@@ -387,6 +386,17 @@ class TilerLayer:
         title = f"PLI - {field['name']} - {overlay['overlay_type']}"
         layer = self.loadVector(url, title, field)
         self.loadStyle(layer, "pli")
+        layer.triggerRepaint()
+
+    def loadGrid(self):
+        overlay = self.dockwidget.overlay.text()
+        grid = self.dockwidget.grid.text()
+        url = f"grid/{overlay}/{grid}"
+        overlay = wc.Overlay.retrieve(overlay)
+        field = wc.Field.retrieve(overlay["field_id"])
+        title = f"Grid - {field['name']} - {overlay['overlay_type']}"
+        layer = self.loadVector(url, title, field)
+        self.loadStyle(layer, "grid")
         layer.triggerRepaint()
 
     def loadSensor(self):

@@ -80,7 +80,11 @@
        </widget>
       </item>
       <item row="2" column="1">
-       <widget class="QLineEdit" name="field"/>
+       <widget class="QLineEdit" name="field">
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
       </item>
       <item row="3" column="0">
        <widget class="QLabel" name="overlayLabel">
@@ -90,7 +94,11 @@
        </widget>
       </item>
       <item row="3" column="1">
-       <widget class="QLineEdit" name="overlay"/>
+       <widget class="QLineEdit" name="overlay">
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
       </item>
       <item row="4" column="0">
        <widget class="QLabel" name="customerLabel">
@@ -111,6 +119,20 @@
       </item>
       <item row="5" column="1">
        <widget class="QLineEdit" name="asset"/>
+      </item>
+      <item row="6" column="0">
+       <widget class="QLabel" name="gridLabel">
+        <property name="text">
+         <string>Grid</string>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="1">
+       <widget class="QLineEdit" name="grid">
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
       </item>
      </layout>
     </item>
