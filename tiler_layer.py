@@ -304,9 +304,10 @@ class TilerLayer:
         layer = QgsRasterLayer(url, title, "wms")
 
         if layer.isValid():
-            QgsProject.instance().addMapLayer(layer)
             if field and self.dockwidget.extent.isChecked():
                 layer.setExtent(self.fieldExtent(field, 100))
+            QgsProject.instance().addMapLayer(layer)
+            self.iface.zoomToActiveLayer()
         else:
             self.iface.messageBar().pushMessage(
                 "Error", f"Invalid Raster Layer: {url}", level=Qgis.Critical

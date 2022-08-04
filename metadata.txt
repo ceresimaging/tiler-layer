@@ -3,14 +3,14 @@
 # This file should be included when you package your plugin.# Mandatory items:
 
 [general]
-name=Tiler Layer
+name=Ceres Tiler Layers
 qgisMinimumVersion=3.0
 description=Ceres Tiler Layer Loader
 version=0.1
 author=Ceres Imaging
 email=mmiranda@ceresimaging.net
 
-about=Provide a brief description of the plugin and its purpose.
+about=It allows to load vector/raster tiles from Ceres tile server. Just for Ceres internal usage.
 
 tracker=https://github.com/ceresimaging/tiler-layer/issues
 repository=https://github.com/ceresimaging/tiler-layer
