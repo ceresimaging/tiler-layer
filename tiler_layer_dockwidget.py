@@ -56,6 +56,7 @@ class TilerLayerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         self.layer.addItem("Grid", "grid")
         self.layer.addItem("Sensor", "sensor")
         self.layer.addItem("Asset", "asset")
+        self.layer.addItem("Marker", "marker")
 
         self.layer.activated.connect(self.layerChanged)
 
@@ -93,6 +94,9 @@ class TilerLayerDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         elif layer == "asset":
             self.asset.show()
             self.assetLabel.show()
+        elif layer == "marker":
+            self.visit.show()
+            self.visitLabel.show()
 
     def closeEvent(self, event):
         self.closingPlugin.emit()

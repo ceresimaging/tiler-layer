@@ -291,6 +291,8 @@ class TilerLayer:
             self.loadSensor()
         elif layer == "asset":
             self.loadAsset()
+        elif layer == "marker":
+            self.loadMarker()
 
     def loadRaster(self, url, title, field=None):
         xyz = "%7Bz%7D/%7Bx%7D/%7By%7D"
@@ -415,3 +417,11 @@ class TilerLayer:
         field = wc.Field.retrieve(asset["field"])
         title = f"Asset - {asset['id']} - {asset['asset_type']}"
         self.loadRaster(url, title, field)
+
+    def loadMarker(self):
+        visit = self.dockwidget.visit.text()
+        url = f"marker/{visit}"
+        visit = wc.Visit.retrieve(visit)
+        # field = wc.Field.retrieve(visit["field"])
+        title = f"Marker - Visit {visit['id']}"
+        self.loadVector(url, title, visit["field"])
