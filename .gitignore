@@ -3,3 +3,4 @@ zip_build
 help/build
 .DS_Store
 worksclient
+.qt_for_python
